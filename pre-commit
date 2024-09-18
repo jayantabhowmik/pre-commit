@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Pre-commit hook script to run flake8 for Python code quality checks
+# and to check for secrets, passwords, or tokens in the code.
+
+# Specify the directories or files to check (you can modify this as needed)
+FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$')
+
+# Check if there are any Python files staged for commit
+if [[ "$FILES" = "" ]]; then
+    echo "No Python files to check."
+    exit 0
+fi
+
+# Run flake8 on staged files
+echo "Running flake8 on the following Python files:"
+echo "$FILES"
+
+# Run flake8 for each staged Python file
+flake8 $FILES
+FLAKE8_STATUS=$?
+
+if [ $FLAKE8_STATUS -ne 0 ]; then
+    echo "Code quality issues detected. Please fix them before committing."
+    exit 1
+fi
+
+# Check for potential secrets (passwords, tokens, etc.)
+echo "Checking for secrets, passwords, or tokens in the following Python files:"
+echo "$FILES"
+
+# Define patterns to look for (you can modify these as needed)
+SECRET_PATTERNS="password|token|apikey|secret|credentials"
+
+# Use grep to search for the patterns in the staged files
+for FILE in $FILES; do
+    if grep -E -q "$SECRET_PATTERNS" "$FILE"; then
+        echo "Potential secrets detected in $FILE. Please remove sensitive information before committing."
+        exit 1
+    fi
+done
+
+# If no issues are found, allow the commit
+echo "No issues detected by flake8 or secret checks. Proceeding with commit."
+
+# Exit with success code
+exit 0
+
